@@ -30,7 +30,11 @@ const xlsx = require("xlsx");
 const axios = require("axios"); // ajax 라이브러리
 const cheerio = require("cheerio"); // html 파싱
 
+const add_to_sheet = require("./add_to_sheet");
 const workbook = xlsx.readFile("xlsx/data.xlsx");
+// for (const name of workbook.SheetNames) {
+//   const ws = workbook.Sheets[name];
+// }
 const ws = workbook.Sheets.영화목록;
 const records = xlsx.utils.sheet_to_json(ws);
 
@@ -50,15 +54,20 @@ const crawler = async () => {
   //     }
   //   })
   // );
-  for (const [i, r] of records.entries()) { // for of 문은 await와 같이 쓰면 순서가 보장된다.
+  add_to_sheet(ws, 'C1', 's', '평점');
+  for (const [i, r] of records.entries()) {
+    // for of 문은 await와 같이 쓰면 순서가 보장된다.
     const response = await axios.get(r.링크);
     if (response.status === 200) {
       const html = response.data;
       const $ = cheerio.load(html); // cheerio와 $ 를 이용해서 html tag를 가져올 수 있음
       const score = $(".score.score_left .star_score").text();
       console.log(r.제목, "평점 :", score.trim());
+      const newCell = 'C' + (i + 2);
+      add_to_sheet(ws, newCell, 'n', parseFloat(score.trim()));
     }
   }
+  xlsx.writeFile(workbook, 'xlsx/result.xlsx')
 };
 
 crawler();
