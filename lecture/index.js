@@ -1,57 +1,76 @@
-// const stringify = require("csv-stringify/lib/sync");
 const xlsx = require("xlsx");
 const puppeteer = require("puppeteer");
+const fs = require("fs"); // file-system
+const axios = require("axios");
 const add_to_sheet = require("./add_to_sheet");
-const workbook = xlsx.readFile("xlsx/data.xlsx");
+
+const workbook = xlsx.readFile("xlsx/data.xlsx"); // TODO: 왜 한 페이지에서 크롤링 하는지 이유 설명하기(메모리, rate-limit)
 const ws = workbook.Sheets.영화목록;
 const records = xlsx.utils.sheet_to_json(ws);
 
-// const parse = require("csv-parse/lib/sync");
-// const fs = require("fs");
-
-// const csv = fs.readFileSync("csv/data.csv");
-// const records = parse(csv.toString("utf-8"));
+fs.readdir("screenshot", err => {
+  if (err) {
+    console.error("screenshot 폴더가 없어 screenshot 폴더를 생성합니다.");
+    fs.mkdirSync("screenshot");
+  }
+});
+fs.readdir("poster", err => {
+  if (err) {
+    console.error("poster 폴더가 없어 poster 폴더를 생성합니다.");
+    fs.mkdirSync("poster");
+  }
+});
 
 const crawler = async () => {
   try {
-    // const result = [];
     const browser = await puppeteer.launch({
-      headless: process.env.NODE_ENV === "production"
+      headless: false,
+      args: ["--window-size=1920,1080"]
     });
     const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"
-    );
+    await page.setViewport({
+      width: 1920,
+      height: 1080
+    });
     add_to_sheet(ws, "C1", "s", "평점");
     for (const [i, r] of records.entries()) {
       await page.goto(r.링크);
-      // await page.goto(r[1]);
-      // const 태그핸들러 = await page.$(선택자);
-      console.log(await page.evaluate("navigator.userAgent"));
-      const text = await page.evaluate(() => {
-        const score = document.querySelector(".score.score_left .star_score");
-        if (score) {
-          return score.textContent;
+      const result = await page.evaluate(() => {
+        let score;
+        const scoreEl = document.querySelector(".score.score_left .star_score");
+        if (scoreEl) {
+          let score = scoreEl.textContent;
         }
+        let img;
+        const imgEl = document.querySelector(".poster img");
+        if (imgEl) {
+          img = imgEl.src;
+        }
+        return { score, img };
       });
-      if (text) {
-        console.log(r.제목, "평점", text.trim());
-        // console.log(r[0], "평점", text.trim());
-        // result[i] = [r[0], r[1], text.trim()];
+      if (result.score) {
         const newCell = "C" + (i + 2);
-        add_to_sheet(ws, newCell, "n", parseFloat(text.trim()));
+        console.log(r.제목, "평점", result.score.trim(), newCell);
+        add_to_sheet(ws, newCell, "n", result.score.trim());
+      }
+      if (result.img) {
+        await page.screenshot({
+          path: `screenshot/${r.제목}.png`,
+          fullPage: true
+        }); // TODO: clip 소개(x, y, width, height)
+        // replace(/\?.*$/, "") 쿼리 스트링 제거를 통해 이미지 화질 개선하기 위해 대체
+        const imgResult = await axios.get(result.img.replace(/\?.*$/, ""), {
+          responseType: "arraybuffer"
+        });
+        fs.writeFileSync(`poster/${r.제목}.jpg`, imgResult.data);
       }
       await page.waitFor(1000);
     }
-
     await page.close();
     await browser.close();
     xlsx.writeFile(workbook, "xlsx/result.xlsx");
-    // const str = stringify(result); // 2차원 배열을 문자열로 만든다.
-    // fs.writeFileSync("csv/result.csv", str);
   } catch (e) {
     console.error(e);
   }
 };
-
 crawler();
