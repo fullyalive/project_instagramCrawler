@@ -4,17 +4,15 @@ const crawler = async () => {
   try {
     const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
-    const crawlingNum = 50;
-    const crawlingTag = "figure";
     await page.goto("https://unsplash.com");
     let result = [];
-    while (result.length <= crawlingNum) {
+    while (result.length <= 30) {
       const srcs = await page.evaluate(() => {
         window.scrollTo(0, 0);
         let imgs = [];
-        const imgEls = document.querySelectorAll(crawlingTag); // 사이트 바뀌었을 때 클래스 적절히 바꾸기
+        const imgEls = document.querySelectorAll("figure"); // 사이트 바뀌었을 때 클래스 적절히 바꾸기
         if (imgEls.length) {
-          // querySelectorAll은 map이 아니라 forEach를 상용한다.
+        // querySelectorAll은 map이 아니라 forEach를 상용한다.
           imgEls.forEach(v => {
             let src = v.querySelector("img._2zEKz").src;
             if (src) {
@@ -30,7 +28,7 @@ const crawler = async () => {
         return imgs;
       });
       result = result.concat(srcs);
-      await page.waitForSelector(crawlingTag);
+      await page.waitForSelector("figure");
     }
     console.log(result);
     await page.close();
