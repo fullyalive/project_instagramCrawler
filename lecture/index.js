@@ -6,7 +6,7 @@ const crawler = async () => {
   try {
     const browser = await puppeteer.launch({
       headless: false,
-      args: ["--window-size=1920, 1080"]
+      args: ["--window-size=1920, 1080", "--disable-notifications"]
     });
     const page = await browser.newPage();
     await page.setViewport({
@@ -30,13 +30,18 @@ const crawler = async () => {
     await page.hover("#loginbutton");
     await page.waitFor(3000);
     await page.click("#loginbutton");
-    await page.waitFor(10000);
-    await page.keyboard.press("Escape");
+    await page.waitForResponse(response => {
+      return response.url().includes("login_attempt");
+    });
     await page.waitFor(3000);
+    await page.keyboard.press("Escape");
     await page.click("#userNavigationLabel");
     await page.waitForSelector("li.navSubmenu:last-child");
     await page.waitFor(3000);
     await page.click("li.navSubmenu:last-child");
+    // await page.evaluate(()=> {
+    //   document.querySelector("li.navSubmenu:last-chlid").click();
+    // })
   } catch (e) {
     console.error(e);
   }
