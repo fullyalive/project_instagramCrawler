@@ -1,57 +1,42 @@
-const puppeteer = require("puppeteer"); // postman으로 요청 보냈을 때 이미지 로딩 상태 확인하기
-const fs = require("fs");
-const axios = require("axios");
-
-fs.readdir("imgs_unsplash", err => {
-  if (err) {
-    console.error("imgs_unsplash 폴더가 없어 imgs_unsplash 폴더를 생성합니다.");
-    fs.mkdirSync("imgs_unsplash");
-  }
-});
+const puppeteer = require("puppeteer");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const crawler = async () => {
   try {
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
-    await page.goto("https://unsplash.com");
-    let result = [];
-    while (result.length <= 50) {
-      const srcs = await page.evaluate(() => {
-        window.scrollTo(0, 0);
-        let imgs = [];
-        const imgEls = document.querySelectorAll("figure"); // 사이트 바뀌었을 때 클래스 적절히 바꾸기
-        if (imgEls.length) {
-          // querySelectorAll은 map이 아니라 forEach를 상용한다.
-          imgEls.forEach(v => {
-            let src = v.querySelector("img._2zEKz").src;
-            if (src) {
-              imgs.push(src);
-            }
-            v.parentElement.removeChild(v);
-          });
-        }
-        window.scrollBy(0, 100);
-        setTimeout(() => {
-          window.scrollBy(0, 200);
-        }, 500);
-        return imgs;
-      });
-      result = result.concat(srcs);
-      await page.waitForSelector("figure");
-      console.log("새 이미지 태그 로딩 완료!");
-    }
-    console.log(result);
-    result.forEach(async src => {
-      const imgResult = await axios.get(src.replace(/\?.*$/, ""), {
-        responseType: "arraybuffer"
-      });
-      fs.writeFileSync(
-        `imgs_unsplash/${new Date().valueOf()}.jpeg`,
-        imgResult.data
-      );
+    const browser = await puppeteer.launch({
+      headless: false,
+      args: ["--window-size=1920, 1080"]
     });
-    await page.close();
-    await browser.close();
+    const page = await browser.newPage();
+    await page.setViewport({
+      width: 1080,
+      height: 1080
+    });
+    await page.goto("https://facebook.com");
+    const id = process.env.FB_ID;
+    const password = process.env.FB_PW;
+    // await page.evaluate(
+    //   (id, password) => {
+    //     document.querySelector("#email").value = id;
+    //     document.querySelector("#pass").value = password;
+    //     document.querySelector("#loginbutton").click();
+    //   },
+    //   id,
+    //   password
+    // );
+    await page.type("#email", id);
+    await page.type("#pass", password);
+    await page.hover("#loginbutton");
+    await page.waitFor(3000);
+    await page.click("#loginbutton");
+    await page.waitFor(10000);
+    await page.keyboard.press("Escape");
+    await page.waitFor(3000);
+    await page.click("#userNavigationLabel");
+    await page.waitForSelector("li.navSubmenu:last-child");
+    await page.waitFor(3000);
+    await page.click("li.navSubmenu:last-child");
   } catch (e) {
     console.error(e);
   }
