@@ -1,4 +1,4 @@
-const xlsx = require('xlsx');
+const xlsx = require('./node_modules/xlsx');
 
 const workbook = xlsx.readFile('xlsx/data.xlsx');
 console.log(Object.keys(workbook.Sheets)); // TODO: workbook.SheetNames

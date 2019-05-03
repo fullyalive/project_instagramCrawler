@@ -1,4 +1,4 @@
-const parse = require('csv-parse/lib/sync');
+const parse = require('./node_modules/csv-parse/lib/sync');
 const fs = require('fs');
 
 const csv = fs.readFileSync('csv/data.csv');
