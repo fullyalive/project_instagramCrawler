@@ -10,7 +10,8 @@ const sequelize = new Sequelize(
   config
 );
 
-db.Facebook = require(sequelize, Sequelize);
+db.Facebook = require("./facebook")(sequelize, Sequelize);
+
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 

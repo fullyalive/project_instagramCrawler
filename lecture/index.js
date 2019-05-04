@@ -1,12 +1,12 @@
 const puppeteer = require("puppeteer");
 const dotenv = require("dotenv");
 
-// const db = require("./models");
+const db = require("./models");
 dotenv.config();
 
 const crawler = async () => {
   try {
-    // await db.sequelize.sync();
+    await db.sequelize.sync();
     const browser = await puppeteer.launch({
       headless: false,
       args: ["--window-size=1920,1080", "--disable-notifications"]
@@ -25,11 +25,13 @@ const crawler = async () => {
       return response.url().includes("login_attempt");
     });
     await page.keyboard.press("Escape");
+    await page.waitFor(2000);
 
     let result = [];
-    while (result.length < 10) {
+    while (result.length < 3) {
       await page.waitForSelector("[id^=hyperfeed_story_id]:first-child");
       const newPost = await page.evaluate(() => {
+        window.scrollTo(0, 0);
         const firstFeed = document.querySelector(
           "[id^=hyperfeed_story_id]:first-child"
         );
@@ -50,16 +52,24 @@ const crawler = async () => {
           postId
         };
       });
+      const exist = await db.Facebook.findOne({
+        where: {
+          postId: newPost.postId
+        }
+      });
+      if (!exist && newPost.name) {
+        result.push(newPost);
+      }
       console.log(newPost);
-      result.push(newPost);
       await page.waitFor(1000);
       const likeBtn = await page.$(
-        "[id^=hyperfeed_story_id]:first-chlid ._666k a"
+        "[id^=hyperfeed_story_id]:first-child ._666k a"
       );
       await page.evaluate(like => {
         const isSponsor = document
-          .querySelector("[id^=hyperfeed_story_id]:first-chlid")
+          .querySelector("[id^=hyperfeed_story_id]:first-child")
           .textContent.includes("Sponsored");
+        console.log(3333);
         if (!isSponsor && like.getAttribute("aria-pressed") === "false") {
           like.click();
         } else if (isSponsor && like.getAttribute("aria-pressed") === "true") {
@@ -72,9 +82,21 @@ const crawler = async () => {
           "[id^=hyperfeed_story_id]:first-child"
         );
         firstFeed.parentNode.removeChild(firstFeed);
+        window.scrollBy(0, 200);
       });
       await page.waitFor(1000);
     }
+    await Promise.all(
+      result.map(r => {
+        return db.Facebook.create({
+          postId: r.postId,
+          media: r.img,
+          writer: r.name,
+          content: r.content
+        });
+      })
+    );
+    console.log(result.length);
     await page.close();
     await browser.close();
   } catch (e) {
