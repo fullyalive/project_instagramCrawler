@@ -9,96 +9,22 @@ const crawler = async () => {
     await db.sequelize.sync();
     const browser = await puppeteer.launch({
       headless: false,
-      args: ["--window-size=1920,1080", "--disable-notifications"]
+      args: ["--window-size=1920,1080", "--disable-notifications"],
     });
     const page = await browser.newPage();
     await page.setViewport({
       width: 1920,
       height: 1080
     });
-    await page.goto("https://facebook.com");
+    await page.goto("https://instagram.com");
+    await page.waitForSelector("button.L3NKy"); // instagram 내 페이스북 로그인버튼
+    await page.click("button.L3NKy");
+    await page.waitForNavigation(); // facebook 로그인 창 리다이렉트를 기다린다.
+    await page.waitForSelector("#email"); // 해당 태그의 존재 여부를 확인
     await page.type("#email", process.env.FB_ID);
     await page.type("#pass", process.env.FB_PW);
-    await page.waitFor(1000);
+    await page.waitForSelector("#loginbutton");
     await page.click("#loginbutton");
-    await page.waitForResponse(response => {
-      return response.url().includes("login_attempt");
-    });
-    await page.keyboard.press("Escape");
-    await page.waitFor(2000);
-
-    let result = [];
-    while (result.length < 3) {
-      await page.waitForSelector("[id^=hyperfeed_story_id]:first-child");
-      const newPost = await page.evaluate(() => {
-        window.scrollTo(0, 0);
-        const firstFeed = document.querySelector(
-          "[id^=hyperfeed_story_id]:first-child"
-        );
-        const name =
-          firstFeed.querySelector(".fwb.fcg") &&
-          firstFeed.querySelector(".fwb.fcg").textContent;
-        const content =
-          firstFeed.querySelector(".userContent") &&
-          firstFeed.querySelector(".userContent").textContent;
-        const img =
-          firstFeed.querySelector("[class=mtm] img") &&
-          firstFeed.querySelector("[class=mtm] img").src;
-        const postId = firstFeed.id.split("_").slice(-1)[0];
-        return {
-          name,
-          img,
-          content,
-          postId
-        };
-      });
-      const exist = await db.Facebook.findOne({
-        where: {
-          postId: newPost.postId
-        }
-      });
-      if (!exist && newPost.name) {
-        result.push(newPost);
-      }
-      console.log(newPost);
-      await page.waitFor(1000);
-      const likeBtn = await page.$(
-        "[id^=hyperfeed_story_id]:first-child ._666k a"
-      );
-      await page.evaluate(like => {
-        const isSponsor = document
-          .querySelector("[id^=hyperfeed_story_id]:first-child")
-          .textContent.includes("Sponsored");
-        console.log(3333);
-        if (!isSponsor && like.getAttribute("aria-pressed") === "false") {
-          like.click();
-        } else if (isSponsor && like.getAttribute("aria-pressed") === "true") {
-          like.click();
-        }
-      }, likeBtn);
-      await page.waitFor(1000);
-      await page.evaluate(() => {
-        const firstFeed = document.querySelector(
-          "[id^=hyperfeed_story_id]:first-child"
-        );
-        firstFeed.parentNode.removeChild(firstFeed);
-        window.scrollBy(0, 200);
-      });
-      await page.waitFor(1000);
-    }
-    await Promise.all(
-      result.map(r => {
-        return db.Facebook.create({
-          postId: r.postId,
-          media: r.img,
-          writer: r.name,
-          content: r.content
-        });
-      })
-    );
-    console.log(result.length);
-    await page.close();
-    await browser.close();
   } catch (e) {
     console.error(e);
   }
