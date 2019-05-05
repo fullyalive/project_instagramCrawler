@@ -1,4 +1,4 @@
-  const xlsx = require('./node_modules/xlsx');
+  const xlsx = require('xlsx');
 
 function range_add_cell(range, cell) {
   var rng = xlsx.utils.decode_range(range);

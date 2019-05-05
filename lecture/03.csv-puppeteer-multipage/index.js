@@ -1,7 +1,7 @@
-const parse = require('./node_modules/csv-parse/lib/sync');
-const stringify = require('./node_modules/csv-stringify/lib/sync');
+const parse = require('csv-parse/lib/sync');
+const stringify = require('csv-stringify/lib/sync');
 const fs = require('fs');
-const puppeteer = require('./node_modules/puppeteer');
+const puppeteer = require('puppeteer');
 
 const csv = fs.readFileSync('csv/data.csv');
 const records = parse(csv.toString('utf-8'));
